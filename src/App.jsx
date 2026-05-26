@@ -18,7 +18,8 @@ const CSS = `
   --line:#E8E7E1; --line-strong:#D6D5CC;
   --serif:'Newsreader',Georgia,'Times New Roman',serif;
   --sans:'Hanken Grotesk',-apple-system,system-ui,sans-serif;
-  min-height:100vh; width:100%;
+  min-height:100vh; min-height:100dvh;
+  width:100%; display:flex; flex-direction:column;
   background:
     radial-gradient(120% 80% at 50% 0%, #F1EFE8 0%, #E7E4DB 60%, #E2DFD4 100%);
   font-family:var(--sans);
@@ -28,8 +29,7 @@ const CSS = `
 .pacte-root *{ box-sizing:border-box; }
 
 .app-container{
-  display:flex; flex-direction:column;
-  height:100vh; height:100dvh;
+  flex:1; display:flex; flex-direction:column;
   width:100%; max-width:600px;
   margin:0 auto;
   background:var(--ivory);
