@@ -1,0 +1,1144 @@
+import React, { useState, useEffect, useRef } from "react";
+
+/* ============================================================
+   PACTE — Prototype d'interface de suivi de santé
+   Direction : sobre, calme, institutionnelle mais humaine.
+   Palette : vert profond #35462D · or sable #D9BB84 · ivoire #F9F9F7
+   Vocabulaire : observer, signaler, préparer, ajuster, réévaluer.
+   ============================================================ */
+
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
+
+.pacte-root{
+  --ivory:#F9F9F7; --paper:#FFFFFF;
+  --green:#35462D; --green-700:#2B3A22; --green-soft:#EBEEE8;
+  --gold:#D9BB84; --gold-soft:#F3EAD6;
+  --ink:#262626; --slate:#586663; --muted:#8E918A;
+  --line:#E8E7E1; --line-strong:#D6D5CC;
+  --serif:'Newsreader',Georgia,'Times New Roman',serif;
+  --sans:'Hanken Grotesk',-apple-system,system-ui,sans-serif;
+  min-height:100vh; width:100%;
+  display:flex; align-items:center; justify-content:center;
+  padding:32px 16px;
+  background:
+    radial-gradient(120% 80% at 50% 0%, #F1EFE8 0%, #E7E4DB 60%, #E2DFD4 100%);
+  font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;
+  box-sizing:border-box;
+}
+.pacte-root *{ box-sizing:border-box; }
+
+/* ---------- device shell ---------- */
+.device{
+  position:relative;
+  width:392px; max-width:100%;
+  height:min(844px,94vh);
+  background:var(--ivory);
+  border-radius:46px;
+  overflow:hidden;
+  display:flex; flex-direction:column;
+  box-shadow:
+    0 2px 4px rgba(38,38,38,.04),
+    0 30px 60px -22px rgba(38,38,38,.34),
+    0 0 0 1px rgba(38,38,38,.05),
+    inset 0 0 0 6px #F4F2EC;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ---------- status bar ---------- */
+.statusbar{
+  flex:0 0 auto;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 30px 6px;
+  font-size:13px; font-weight:600; color:var(--ink);
+  letter-spacing:.2px;
+}
+.statusbar .dots{ display:flex; gap:5px; align-items:center; }
+.statusbar .bar{ width:3px; border-radius:2px; background:var(--ink); }
+
+/* ---------- scrollable body ---------- */
+.body{
+  flex:1 1 auto; overflow-y:auto; overflow-x:hidden;
+  scrollbar-width:none;
+}
+.body::-webkit-scrollbar{ display:none; }
+
+.screen{
+  padding:6px 22px 30px;
+  animation:screenIn .42s cubic-bezier(.22,.61,.36,1) both;
+}
+@keyframes screenIn{
+  from{ opacity:0; transform:translateY(10px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+/* ---------- app bar / wordmark ---------- */
+.appbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 2px 4px;
+}
+.wordmark{
+  position:relative; font-family:var(--serif);
+  font-size:21px; font-weight:500; color:var(--green);
+  letter-spacing:.3px; padding-top:7px;
+}
+.wordmark .loop{
+  position:absolute; top:-3px; left:-5px;
+}
+.appbar .ghost{ width:36px; height:36px; }
+
+/* ---------- headings ---------- */
+.kicker{
+  font-size:11.5px; font-weight:600; letter-spacing:1.6px;
+  text-transform:uppercase; color:var(--muted);
+}
+.title{
+  font-family:var(--serif); font-weight:500;
+  font-size:30px; line-height:1.16; color:var(--ink);
+  letter-spacing:.1px; margin:5px 0 0;
+}
+.subtitle{
+  font-size:14px; color:var(--slate); line-height:1.5;
+  margin-top:8px; max-width:30ch;
+}
+
+/* ---------- cards ---------- */
+.card{
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:18px;
+  box-shadow:0 1px 2px rgba(38,38,38,.03);
+}
+.reveal{ opacity:0; animation:screenIn .55s cubic-bezier(.22,.61,.36,1) both; }
+
+/* ---------- RDV card ---------- */
+.rdv{ padding:17px 18px; }
+.rdv-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.rdv-label{
+  font-size:11.5px; font-weight:600; letter-spacing:.8px;
+  text-transform:uppercase; color:var(--muted);
+  display:flex; align-items:center; gap:7px;
+}
+.rdv-date{
+  font-family:var(--serif); font-size:22px; font-weight:500;
+  color:var(--ink); margin-top:4px;
+}
+.pill{
+  flex:0 0 auto;
+  display:flex; align-items:baseline; gap:3px;
+  background:var(--gold-soft);
+  border:1px solid #E7D5AE;
+  color:#7A5E22;
+  font-weight:700; font-size:15px;
+  padding:7px 12px; border-radius:11px;
+}
+.pill small{ font-size:10.5px; font-weight:600; letter-spacing:.4px; }
+.rdv-div{ height:1px; background:var(--line); margin:14px 0 11px; }
+.rdv-cycle{
+  font-size:13px; color:var(--slate);
+  display:flex; align-items:center; gap:8px;
+}
+.dot-green{ width:6px; height:6px; border-radius:50%; background:var(--green); flex:0 0 auto; }
+
+/* ---------- progress ring ---------- */
+.ring-wrap{
+  display:flex; flex-direction:column; align-items:center;
+  margin:22px 0 6px;
+}
+.ring-stage{
+  position:relative; width:236px; height:236px;
+  cursor:pointer;
+}
+.ring-stage.pulse{ animation:ringPulse .6s ease; }
+@keyframes ringPulse{
+  0%{ transform:scale(1); } 35%{ transform:scale(1.025); } 100%{ transform:scale(1); }
+}
+.ring-svg{ width:100%; height:100%; display:block; }
+.ring-track{ fill:none; stroke:var(--line-strong); stroke-width:13; }
+.ring-prog{
+  fill:none; stroke:var(--green); stroke-width:13; stroke-linecap:round;
+  transition:stroke-dashoffset 1.5s cubic-bezier(.25,.7,.25,1);
+}
+.ring-dotgroup{
+  transition:transform 1.5s cubic-bezier(.25,.7,.25,1);
+  transform-origin:118px 118px;
+}
+.ring-center{
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  text-align:center; padding:0 40px;
+}
+.ring-num{
+  font-family:var(--serif); font-size:58px; font-weight:500;
+  color:var(--green); line-height:1; letter-spacing:.5px;
+}
+.ring-unit{
+  font-size:12.5px; font-weight:600; letter-spacing:1.4px;
+  text-transform:uppercase; color:var(--muted); margin-top:7px;
+}
+.ring-note{
+  font-size:13px; color:var(--slate); line-height:1.5;
+  text-align:center; max-width:27ch; margin:14px auto 0;
+}
+
+/* ---------- buttons ---------- */
+.btn{
+  width:100%; border:none; cursor:pointer;
+  font-family:var(--sans); font-size:15px; font-weight:600;
+  border-radius:14px; padding:15px 18px;
+  display:flex; align-items:center; justify-content:center; gap:9px;
+  transition:transform .12s ease, background .2s ease, box-shadow .2s ease;
+}
+.btn:active{ transform:scale(.985); }
+.btn-primary{
+  background:var(--green); color:#F4F2EC;
+  box-shadow:0 6px 16px -6px rgba(53,70,45,.55);
+}
+.btn-primary:active{ background:var(--green-700); }
+.btn-ghost{
+  background:transparent; color:var(--green);
+  border:1px solid var(--line-strong);
+}
+.btn-ghost:active{ background:var(--green-soft); }
+.btn-text{
+  background:transparent; color:var(--slate);
+  font-weight:600; padding:13px;
+}
+.btn-row{ display:flex; flex-direction:column; gap:10px; margin-top:22px; }
+
+.history-link{
+  display:flex; align-items:center; justify-content:center; gap:7px;
+  margin-top:18px; background:none; border:none; cursor:pointer;
+  font-family:var(--sans); font-size:13px; font-weight:600;
+  color:var(--muted); transition:color .2s;
+}
+.history-link:active{ color:var(--green); }
+
+/* ---------- indicator list ---------- */
+.section-intro{ font-size:14px; color:var(--slate); line-height:1.55; margin:12px 0 18px; }
+.ind-card{
+  display:flex; align-items:center; gap:14px;
+  padding:15px 16px; margin-bottom:10px;
+  cursor:pointer;
+  transition:transform .12s ease, border-color .2s ease;
+}
+.ind-card:active{ transform:scale(.99); border-color:var(--line-strong); }
+.ind-main{ flex:1 1 auto; min-width:0; }
+.ind-name{ font-size:15.5px; font-weight:600; color:var(--ink); }
+.ind-trend{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+.ind-val{
+  font-family:var(--serif); font-size:19px; font-weight:500; color:var(--green);
+  flex:0 0 auto;
+}
+.ind-val small{ font-size:12px; color:var(--muted); font-family:var(--sans); }
+.spark{ flex:0 0 auto; }
+
+/* ---------- chips ---------- */
+.chips{ display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 4px; }
+.chip{
+  border:1px solid var(--line-strong); background:var(--paper);
+  color:var(--slate); cursor:pointer;
+  font-family:var(--sans); font-size:13px; font-weight:600;
+  padding:8px 14px; border-radius:11px;
+  transition:all .18s ease;
+}
+.chip:active{ transform:scale(.97); }
+.chip.on{
+  background:var(--green); color:#F4F2EC; border-color:var(--green);
+}
+
+/* ---------- observation ---------- */
+.obs-date{ font-size:13px; color:var(--muted); font-weight:600; margin-top:4px; }
+.obs-question{
+  font-family:var(--serif); font-size:21px; font-weight:500;
+  line-height:1.32; color:var(--ink); margin:20px 0 4px;
+}
+.gauge{
+  text-align:center; margin:22px 0 4px;
+}
+.gauge-num{
+  font-family:var(--serif); font-size:52px; font-weight:500;
+  color:var(--green); line-height:1;
+}
+.gauge-word{
+  font-size:13px; font-weight:600; letter-spacing:.6px;
+  color:var(--slate); margin-top:6px;
+}
+.slider-wrap{ padding:6px 4px 2px; }
+.slider{
+  -webkit-appearance:none; appearance:none;
+  width:100%; height:34px; background:transparent; cursor:pointer;
+}
+.slider::-webkit-slider-runnable-track{
+  height:4px; border-radius:3px;
+  background:linear-gradient(to right,
+    var(--green) 0 var(--pct,50%), var(--line-strong) var(--pct,50%) 100%);
+}
+.slider::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none;
+  height:26px; width:26px; border-radius:50%;
+  background:var(--green); margin-top:-11px;
+  border:4px solid var(--ivory);
+  box-shadow:0 2px 9px rgba(53,70,45,.4);
+  transition:transform .15s ease;
+}
+.slider:active::-webkit-slider-thumb{ transform:scale(1.14); }
+.slider::-moz-range-track{ height:4px; border-radius:3px; background:var(--line-strong); }
+.slider::-moz-range-progress{ height:4px; border-radius:3px; background:var(--green); }
+.slider::-moz-range-thumb{
+  height:22px; width:22px; border-radius:50%;
+  background:var(--green); border:4px solid var(--ivory);
+  box-shadow:0 2px 9px rgba(53,70,45,.4);
+}
+.slider-ends{
+  display:flex; justify-content:space-between;
+  font-size:11.5px; color:var(--muted); font-weight:600;
+  padding:2px 2px 0; letter-spacing:.2px;
+}
+.field-label{
+  font-size:12px; font-weight:600; letter-spacing:.7px;
+  text-transform:uppercase; color:var(--muted); margin:24px 0 9px;
+}
+.notes{
+  width:100%; min-height:104px; resize:none;
+  font-family:var(--sans); font-size:14px; color:var(--ink);
+  line-height:1.55;
+  background:var(--paper); border:1px solid var(--line);
+  border-radius:14px; padding:14px 15px;
+  transition:border-color .2s ease;
+}
+.notes::placeholder{ color:#AEB0A8; }
+.notes:focus{ outline:none; border-color:var(--green); }
+
+/* ---------- save confirmation ---------- */
+.confirm{
+  margin-top:22px; padding:20px 18px; text-align:center;
+  background:var(--green-soft); border:1px solid #D7DFD2;
+  border-radius:16px;
+  animation:screenIn .4s cubic-bezier(.22,.61,.36,1) both;
+}
+.confirm-icon{
+  width:46px; height:46px; border-radius:50%;
+  background:var(--green); color:#F4F2EC;
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto 12px;
+}
+.confirm h4{
+  font-family:var(--serif); font-weight:500; font-size:18px;
+  color:var(--ink); margin:0 0 5px;
+}
+.confirm p{ font-size:13px; color:var(--slate); margin:0; line-height:1.5; }
+
+/* ---------- synthèse ---------- */
+.chart-card{ padding:16px 16px 12px; }
+.chart-head{
+  display:flex; align-items:baseline; justify-content:space-between;
+  margin-bottom:6px;
+}
+.chart-title{ font-size:13.5px; font-weight:600; color:var(--ink); }
+.chart-meta{ font-size:11.5px; color:var(--muted); }
+.chart-line{
+  fill:none; stroke:var(--green); stroke-width:2;
+  stroke-linecap:round; stroke-linejoin:round;
+  stroke-dasharray:1000; stroke-dashoffset:1000;
+  animation:draw 1.6s .25s cubic-bezier(.4,.5,.3,1) forwards;
+}
+@keyframes draw{ to{ stroke-dashoffset:0; } }
+.chart-area{ fill:var(--green-soft); opacity:0; animation:fadeArea .8s 1.1s forwards; }
+@keyframes fadeArea{ to{ opacity:.6; } }
+.chart-dot{ fill:var(--paper); stroke:var(--green); stroke-width:2; }
+
+.obs-item{ padding:14px 16px; margin-bottom:9px; }
+.obs-item-top{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:5px;
+}
+.obs-when{ font-size:12px; font-weight:600; color:var(--muted); }
+.obs-tag{
+  font-size:12px; font-weight:600; color:var(--green);
+  background:var(--green-soft); padding:3px 9px; border-radius:8px;
+}
+.obs-quote{ font-size:13.5px; color:var(--slate); line-height:1.5; font-style:italic; }
+
+.synth-block{ padding:16px 17px; margin-bottom:11px; }
+.synth-head{
+  display:flex; align-items:center; gap:9px; margin-bottom:11px;
+}
+.synth-badge{
+  width:24px; height:24px; border-radius:8px;
+  background:var(--green-soft); color:var(--green);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--serif); font-weight:600; font-size:14px;
+  flex:0 0 auto;
+}
+.synth-block h4{
+  font-size:14px; font-weight:600; color:var(--ink); margin:0;
+}
+.synth-li{
+  display:flex; gap:10px; padding:7px 0;
+  font-size:13.5px; color:var(--slate); line-height:1.45;
+  border-top:1px solid var(--line);
+}
+.synth-li:first-of-type{ border-top:none; }
+.synth-li .mk{
+  color:var(--gold); flex:0 0 auto; margin-top:6px;
+  width:5px; height:5px; border-radius:50%; background:var(--gold);
+}
+.disclaimer{
+  font-size:12px; font-style:italic; color:var(--muted);
+  line-height:1.5; text-align:center; margin:16px 6px 4px;
+}
+
+/* ---------- ressources ---------- */
+.etp-card{
+  padding:18px 18px;
+  background:linear-gradient(135deg,var(--green) 0%,var(--green-700) 100%);
+  border:none; color:#EDEAE0;
+}
+.etp-card .etp-k{
+  font-size:11px; font-weight:600; letter-spacing:1.4px;
+  text-transform:uppercase; color:var(--gold);
+}
+.etp-card h3{
+  font-family:var(--serif); font-weight:500; font-size:21px;
+  margin:6px 0 7px; color:#F4F2EC;
+}
+.etp-card p{ font-size:13px; line-height:1.55; color:#CFD3C8; margin:0; }
+
+.res-group{ margin-top:18px; }
+.res-group > .res-gt{
+  font-size:12px; font-weight:600; letter-spacing:.7px;
+  text-transform:uppercase; color:var(--muted); margin:0 4px 9px;
+}
+.res-row{
+  display:flex; align-items:center; gap:13px;
+  padding:14px 15px; margin-bottom:9px; cursor:pointer;
+  transition:transform .12s ease, border-color .2s ease;
+}
+.res-row:active{ transform:scale(.99); border-color:var(--line-strong); }
+.res-ic{
+  width:38px; height:38px; border-radius:11px; flex:0 0 auto;
+  background:var(--green-soft); color:var(--green);
+  display:flex; align-items:center; justify-content:center;
+}
+.res-tx{ flex:1 1 auto; min-width:0; }
+.res-tx .rt{ font-size:14.5px; font-weight:600; color:var(--ink); }
+.res-tx .rs{ font-size:12px; color:var(--muted); margin-top:1px; }
+
+/* ---------- bottom nav ---------- */
+.nav{
+  flex:0 0 auto;
+  display:flex; align-items:stretch;
+  padding:9px 12px calc(9px + env(safe-area-inset-bottom,8px));
+  background:rgba(249,249,247,.92);
+  backdrop-filter:blur(12px);
+  border-top:1px solid var(--line);
+}
+.nav-item{
+  flex:1; background:none; border:none; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:7px 4px 5px; color:var(--muted);
+  font-family:var(--sans); font-size:10.5px; font-weight:600;
+  letter-spacing:.2px;
+  transition:color .22s ease;
+}
+.nav-item.on{ color:var(--green); }
+.nav-ic{ position:relative; transition:transform .22s cubic-bezier(.34,1.4,.5,1); }
+.nav-item.on .nav-ic{ transform:translateY(-1px); }
+.nav-pip{
+  position:absolute; bottom:-6px; left:50%;
+  width:4px; height:4px; border-radius:50%;
+  background:var(--green); transform:translateX(-50%) scale(0);
+  transition:transform .25s cubic-bezier(.34,1.5,.5,1);
+}
+.nav-item.on .nav-pip{ transform:translateX(-50%) scale(1); }
+
+.back-btn{
+  width:38px; height:38px; border-radius:11px;
+  background:var(--paper); border:1px solid var(--line);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--ink);
+  transition:transform .12s ease;
+}
+.back-btn:active{ transform:scale(.94); }
+`;
+
+/* ---------------- ICONS ---------------- */
+function Icon({ name, size = 22, stroke = 1.6, color = "currentColor", style }) {
+  const p = {
+    fill: "none", stroke: color, strokeWidth: stroke,
+    strokeLinecap: "round", strokeLinejoin: "round",
+  };
+  const shapes = {
+    ring: <circle cx="12" cy="12" r="9" {...p} />,
+    bars: (
+      <g {...p}>
+        <line x1="6.5" y1="20" x2="6.5" y2="13" />
+        <line x1="12" y1="20" x2="12" y2="7" />
+        <line x1="17.5" y1="20" x2="17.5" y2="15.5" />
+      </g>
+    ),
+    doc: (
+      <g {...p}>
+        <path d="M7 3.4h6.6l4.9 4.9V19.6a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.4a1 1 0 0 1 1-1z" />
+        <path d="M13.4 3.6V8.6h4.9" />
+        <line x1="9" y1="13" x2="15" y2="13" />
+        <line x1="9" y1="16.4" x2="13" y2="16.4" />
+      </g>
+    ),
+    book: (
+      <g {...p}>
+        <path d="M12 6.6S10 4.9 6.6 4.9 3.4 5.5 3.4 5.5v13s1.1-.6 3-.6c3.4 0 5.6 1.7 5.6 1.7s2.2-1.7 5.6-1.7c1.9 0 3 .6 3 .6v-13s-1.1-.6-3-.6C14 4.9 12 6.6 12 6.6z" />
+        <line x1="12" y1="6.6" x2="12" y2="19.6" />
+      </g>
+    ),
+    back: (
+      <g {...p}>
+        <line x1="19" y1="12" x2="6" y2="12" />
+        <polyline points="11,6 5,12 11,18" />
+      </g>
+    ),
+    arrow: (
+      <g {...p}>
+        <line x1="5" y1="12" x2="18" y2="12" />
+        <polyline points="13,7 18.5,12 13,17" />
+      </g>
+    ),
+    plus: (
+      <g {...p}>
+        <line x1="12" y1="6" x2="12" y2="18" />
+        <line x1="6" y1="12" x2="18" y2="12" />
+      </g>
+    ),
+    chevron: <polyline points="9,5 16,12 9,19" {...p} />,
+    check: <polyline points="5,12.5 10,17.5 19,7" {...p} />,
+    calendar: (
+      <g {...p}>
+        <rect x="4" y="5" width="16" height="15" rx="2.6" />
+        <line x1="4" y1="9.6" x2="20" y2="9.6" />
+        <line x1="9" y1="3" x2="9" y2="6.5" />
+        <line x1="15" y1="3" x2="15" y2="6.5" />
+      </g>
+    ),
+    download: (
+      <g {...p}>
+        <path d="M12 4v10.5" />
+        <polyline points="7.5,10.5 12,15 16.5,10.5" />
+        <line x1="5.5" y1="19.5" x2="18.5" y2="19.5" />
+      </g>
+    ),
+    spark: (
+      <g {...p}>
+        <polyline points="4,16 9,11 13,14 20,5.5" />
+      </g>
+    ),
+    people: (
+      <g {...p}>
+        <circle cx="9" cy="8.5" r="3" />
+        <circle cx="16.5" cy="10" r="2.4" />
+        <path d="M3.5 19c.4-3 2.7-4.5 5.5-4.5s5.1 1.5 5.5 4.5" />
+        <path d="M15 14.6c2 .2 3.7 1.5 4 4" />
+      </g>
+    ),
+    leaf: (
+      <g {...p}>
+        <path d="M5 19C5 10 11 5 19 5c0 8-5 14-14 14z" />
+        <path d="M5 19c2-5 6-9 11-11" />
+      </g>
+    ),
+    heart: (
+      <path d="M12 20S4 14.8 4 9.4A4.4 4.4 0 0 1 12 6.8 4.4 4.4 0 0 1 20 9.4C20 14.8 12 20 12 20z" {...p} />
+    ),
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={style}>
+      {shapes[name]}
+    </svg>
+  );
+}
+
+/* ---------------- PROGRESS RING ---------------- */
+function ProgressRing({ progress = 0.66, days = 32 }) {
+  const R = 92, CX = 118, CY = 118;
+  const C = 2 * Math.PI * R;
+  const [filled, setFilled] = useState(false);
+  const [num, setNum] = useState(0);
+  const [pulse, setPulse] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setFilled(true), 160);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    let raf, start;
+    const dur = 1400;
+    const tick = (ts) => {
+      if (!start) start = ts;
+      const k = Math.min((ts - start) / dur, 1);
+      const eased = 1 - Math.pow(1 - k, 3);
+      setNum(Math.round(eased * days));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    const t = setTimeout(() => { raf = requestAnimationFrame(tick); }, 160);
+    return () => { clearTimeout(t); cancelAnimationFrame(raf); };
+  }, [days]);
+
+  const offset = filled ? C * (1 - progress) : C;
+  const dotAngle = filled ? progress * 360 : 0;
+
+  return (
+    <div
+      className={"ring-stage" + (pulse ? " pulse" : "")}
+      onClick={() => { setPulse(true); setTimeout(() => setPulse(false), 620); }}
+    >
+      <svg className="ring-svg" viewBox="0 0 236 236">
+        <circle className="ring-track" cx={CX} cy={CY} r={R} />
+        <g transform={`rotate(-90 ${CX} ${CY})`}>
+          <circle
+            className="ring-prog"
+            cx={CX} cy={CY} r={R}
+            strokeDasharray={C}
+            strokeDashoffset={offset}
+          />
+        </g>
+        <g className="ring-dotgroup" style={{ transform: `rotate(${dotAngle}deg)` }}>
+          <circle cx={CX} cy={CY - R} r="8" fill="#D9BB84" />
+          <circle cx={CX} cy={CY - R} r="3.4" fill="#35462D" />
+        </g>
+      </svg>
+      <div className="ring-center">
+        <div className="ring-num">{num}</div>
+        <div className="ring-unit">jours restants</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- MINI SPARKLINE ---------------- */
+function Spark({ data }) {
+  const w = 52, h = 22, pad = 3;
+  const min = Math.min(...data), max = Math.max(...data);
+  const span = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = pad + (i / (data.length - 1)) * (w - pad * 2);
+    const y = pad + (1 - (v - min) / span) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  return (
+    <svg className="spark" width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+      <polyline
+        points={pts.join(" ")}
+        fill="none" stroke="#8E918A" strokeWidth="1.6"
+        strokeLinecap="round" strokeLinejoin="round"
+      />
+      <circle
+        cx={pts[pts.length - 1].split(",")[0]}
+        cy={pts[pts.length - 1].split(",")[1]}
+        r="2.6" fill="#35462D"
+      />
+    </svg>
+  );
+}
+
+/* ---------------- DATA ---------------- */
+const INDICATORS = [
+  { key: "fatigue", name: "Fatigue", last: 6, trend: "Tendance en baisse", spark: [7, 7, 6, 6, 5, 6] },
+  { key: "douleur", name: "Douleur", last: 3, trend: "Plutôt stable", spark: [4, 4, 3, 3, 3, 3] },
+  { key: "sommeil", name: "Sommeil", last: 5, trend: "Variable", spark: [6, 4, 7, 5, 6, 5] },
+  { key: "humeur", name: "Humeur", last: 6, trend: "Plutôt stable", spark: [5, 6, 6, 5, 7, 6] },
+  { key: "effets", name: "Effets secondaires", last: 2, trend: "Tendance en baisse", spark: [4, 3, 3, 2, 2, 2] },
+];
+
+const VALUE_WORD = (v) => {
+  if (v === 0) return "Aucune";
+  if (v <= 3) return "Légère";
+  if (v <= 6) return "Modérée";
+  if (v <= 8) return "Importante";
+  return "Très importante";
+};
+
+/* ---------------- SCREEN : SUIVI ---------------- */
+function ScreenSuivi({ go }) {
+  return (
+    <div className="screen">
+      <div className="appbar">
+        <span className="wordmark">
+          <svg className="loop" width="40" height="20" viewBox="0 0 40 20">
+            <path
+              d="M9 15C2 13 2 5 14 4c14-1 24 3 23 8-1 5-13 6-20 4"
+              fill="none" stroke="#35462D" strokeWidth="1.6"
+              strokeLinecap="round" opacity=".55"
+            />
+          </svg>
+          Pacte
+        </span>
+        <span className="ghost" />
+      </div>
+
+      <div style={{ marginTop: 6 }}>
+        <div className="kicker">Mon suivi</div>
+        <h1 className="title">Mon cycle<br />de suivi en cours</h1>
+      </div>
+
+      <div className="card rdv reveal" style={{ marginTop: 20, animationDelay: ".05s" }}>
+        <div className="rdv-top">
+          <div>
+            <div className="rdv-label">
+              <Icon name="calendar" size={14} stroke={1.8} color="#8E918A" />
+              Prochain rendez-vous
+            </div>
+            <div className="rdv-date">12 juin 2025</div>
+          </div>
+          <div className="pill">J&#8209;32</div>
+        </div>
+        <div className="rdv-div" />
+        <div className="rdv-cycle">
+          <span className="dot-green" />
+          Suivi en cours · réévaluation prévue dans 32 jours
+        </div>
+      </div>
+
+      <div className="ring-wrap reveal" style={{ animationDelay: ".12s" }}>
+        <ProgressRing progress={0.66} days={32} />
+        <p className="ring-note">
+          Chaque observation vous aide à préparer le prochain échange avec votre médecin.
+        </p>
+      </div>
+
+      <div className="btn-row reveal" style={{ animationDelay: ".2s" }}>
+        <button className="btn btn-primary" onClick={() => go("observation")}>
+          <Icon name="plus" size={18} stroke={2} color="#F4F2EC" />
+          Ajouter une observation
+        </button>
+        <button className="btn btn-ghost" onClick={() => go("synthese")}>
+          Voir ma synthèse
+        </button>
+      </div>
+
+      <button className="history-link" onClick={() => go("synthese")}>
+        Dernière observation · 11 mai
+        <Icon name="arrow" size={15} stroke={1.8} color="#8E918A" />
+      </button>
+    </div>
+  );
+}
+
+/* ---------------- SCREEN : INDICATEURS ---------------- */
+function ScreenIndicateurs({ go, openObs }) {
+  return (
+    <div className="screen">
+      <div className="appbar">
+        <span className="wordmark" style={{ fontSize: 16 }}>Pacte</span>
+        <span className="ghost" />
+      </div>
+      <div className="kicker">Mes indicateurs</div>
+      <h1 className="title">Suivre ce que<br />nous avons choisi</h1>
+      <p className="section-intro">
+        Les indicateurs définis avec votre médecin lors de la consultation de délibération.
+      </p>
+
+      {INDICATORS.map((ind, i) => (
+        <div
+          key={ind.key}
+          className="card ind-card reveal"
+          style={{ animationDelay: `${0.05 + i * 0.06}s` }}
+          onClick={() => openObs(ind.key)}
+        >
+          <div className="ind-main">
+            <div className="ind-name">{ind.name}</div>
+            <div className="ind-trend">{ind.trend}</div>
+          </div>
+          <Spark data={ind.spark} />
+          <div className="ind-val">{ind.last}<small>&#8201;/&#8201;10</small></div>
+          <Icon name="chevron" size={16} stroke={1.8} color="#C8C8C8" />
+        </div>
+      ))}
+
+      <div className="btn-row" style={{ marginTop: 16 }}>
+        <button className="btn btn-primary" onClick={() => openObs("fatigue")}>
+          <Icon name="plus" size={18} stroke={2} color="#F4F2EC" />
+          Ajouter une observation
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- SCREEN : OBSERVATION ---------------- */
+function ScreenObservation({ back, startKey }) {
+  const [indKey, setIndKey] = useState(startKey || "fatigue");
+  const [value, setValue] = useState(5);
+  const [notes, setNotes] = useState("");
+  const [saved, setSaved] = useState(false);
+  const current = INDICATORS.find((x) => x.key === indKey);
+  const pct = (value / 10) * 100;
+
+  const reset = (nextKey) => {
+    setIndKey(nextKey || indKey);
+    setValue(5);
+    setNotes("");
+    setSaved(false);
+  };
+  const nextIndicator = () => {
+    const idx = INDICATORS.findIndex((x) => x.key === indKey);
+    reset(INDICATORS[(idx + 1) % INDICATORS.length].key);
+  };
+
+  return (
+    <div className="screen">
+      <div className="appbar">
+        <button className="back-btn" onClick={back}>
+          <Icon name="back" size={19} stroke={1.8} />
+        </button>
+        <span className="ghost" />
+      </div>
+
+      <div className="kicker">Observation</div>
+      <h1 className="title">Noter ce que<br />je ressens</h1>
+      <div className="obs-date">Aujourd&#8217;hui · 11 mai 2025</div>
+
+      <div className="chips">
+        {INDICATORS.map((ind) => (
+          <button
+            key={ind.key}
+            className={"chip" + (ind.key === indKey ? " on" : "")}
+            onClick={() => { setIndKey(ind.key); setSaved(false); }}
+          >
+            {ind.name}
+          </button>
+        ))}
+      </div>
+
+      <p className="obs-question">
+        Comment évaluez-vous votre {current.name.toLowerCase()} aujourd&#8217;hui ?
+      </p>
+
+      <div className="gauge">
+        <div className="gauge-num">{value}</div>
+        <div className="gauge-word">{VALUE_WORD(value)}</div>
+      </div>
+
+      <div className="slider-wrap">
+        <input
+          className="slider"
+          type="range" min="0" max="10" step="1"
+          value={value}
+          style={{ "--pct": pct + "%" }}
+          onChange={(e) => setValue(Number(e.target.value))}
+        />
+        <div className="slider-ends">
+          <span>0 · Aucune</span>
+          <span>Très importante · 10</span>
+        </div>
+      </div>
+
+      <div className="field-label">Notes libres</div>
+      <textarea
+        className="notes"
+        placeholder="Décrivez ce qui a changé, ce qui vous a marqué ou ce que vous souhaitez signaler."
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+      />
+
+      {!saved ? (
+        <div className="btn-row" style={{ marginTop: 18 }}>
+          <button className="btn btn-primary" onClick={() => setSaved(true)}>
+            Enregistrer l&#8217;observation
+          </button>
+          <button className="btn btn-text" onClick={nextIndicator}>
+            Ajouter un autre indicateur
+          </button>
+        </div>
+      ) : (
+        <div className="confirm">
+          <div className="confirm-icon">
+            <Icon name="check" size={22} stroke={2.2} color="#F4F2EC" />
+          </div>
+          <h4>Observation enregistrée</h4>
+          <p>Elle apparaîtra dans votre synthèse, pour préparer le prochain échange.</p>
+          <div className="btn-row" style={{ marginTop: 16 }}>
+            <button className="btn btn-ghost" onClick={nextIndicator}>
+              Ajouter un autre indicateur
+            </button>
+            <button className="btn btn-text" onClick={back}>
+              Revenir au suivi
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- SCREEN : SYNTHÈSE ---------------- */
+function ScreenSynthese() {
+  const data = [7, 6, 7, 5, 6, 4, 5, 6];
+  const W = 308, H = 96, pad = 10;
+  const min = 0, max = 10;
+  const pts = data.map((v, i) => {
+    const x = pad + (i / (data.length - 1)) * (W - pad * 2);
+    const y = pad + (1 - (v - min) / (max - min)) * (H - pad * 2);
+    return [x, y];
+  });
+  const linePath = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
+  const areaPath =
+    `M${pts[0][0].toFixed(1)} ${(H - pad).toFixed(1)} ` +
+    pts.map((p) => `L${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ") +
+    ` L${pts[pts.length - 1][0].toFixed(1)} ${(H - pad).toFixed(1)} Z`;
+
+  const blocks = [
+    {
+      n: 3, title: "Évolutions notables",
+      items: [
+        "Fatigue moins intense qu’en début de cycle",
+        "Douleur stable et bien tolérée au quotidien",
+        "Sommeil encore irrégulier selon les nuits",
+      ],
+    },
+    {
+      n: 2, title: "Points à signaler",
+      items: [
+        "Fatigue récurrente en fin d’après-midi",
+        "Effets secondaires digestifs ponctuels",
+      ],
+    },
+    {
+      n: 3, title: "Questions à poser",
+      items: [
+        "Peut-on ajuster le moment de la prise ?",
+        "Que faire en cas d’oubli d’une dose ?",
+        "Faut-il réévaluer l’activité physique ?",
+      ],
+    },
+  ];
+
+  const recent = [
+    { when: "Aujourd’hui · 11 mai", tag: "Fatigue 6/10", quote: "« Journée plus difficile, fatigue marquée en après-midi. »" },
+    { when: "8 mai", tag: "Sommeil 5/10", quote: "« Réveils nocturnes, mais endormissement plus rapide. »" },
+    { when: "5 mai", tag: "Douleur 3/10", quote: "« Gêne légère, supportable au quotidien. »" },
+  ];
+
+  return (
+    <div className="screen">
+      <div className="appbar">
+        <span className="wordmark" style={{ fontSize: 16 }}>Pacte</span>
+        <span className="ghost" />
+      </div>
+      <div className="kicker">Synthèse</div>
+      <h1 className="title">Préparer le<br />prochain échange</h1>
+      <p className="section-intro">Aperçu de vos observations depuis le 11 mars.</p>
+
+      <div className="card chart-card reveal" style={{ animationDelay: ".05s" }}>
+        <div className="chart-head">
+          <span className="chart-title">Fatigue</span>
+          <span className="chart-meta">8 dernières observations</span>
+        </div>
+        <svg width="100%" viewBox={`0 0 ${W} ${H}`}>
+          <line x1={pad} y1={H - pad} x2={W - pad} y2={H - pad}
+            stroke="#E8E7E1" strokeWidth="1" />
+          <path className="chart-area" d={areaPath} />
+          <path className="chart-line" d={linePath} />
+          {pts.map((p, i) => (
+            <circle key={i} className="chart-dot" cx={p[0]} cy={p[1]} r="3" />
+          ))}
+        </svg>
+      </div>
+
+      <div className="field-label" style={{ marginTop: 22 }}>Observations récentes</div>
+      {recent.map((r, i) => (
+        <div key={i} className="card obs-item reveal" style={{ animationDelay: `${0.1 + i * 0.05}s` }}>
+          <div className="obs-item-top">
+            <span className="obs-when">{r.when}</span>
+            <span className="obs-tag">{r.tag}</span>
+          </div>
+          <div className="obs-quote">{r.quote}</div>
+        </div>
+      ))}
+
+      <div className="field-label" style={{ marginTop: 22 }}>Pour le rendez-vous</div>
+      {blocks.map((b, i) => (
+        <div key={i} className="card synth-block reveal" style={{ animationDelay: `${0.15 + i * 0.06}s` }}>
+          <div className="synth-head">
+            <span className="synth-badge">{b.n}</span>
+            <h4>{b.title}</h4>
+          </div>
+          {b.items.map((it, j) => (
+            <div key={j} className="synth-li">
+              <span className="mk" />
+              <span>{it}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      <p className="disclaimer">
+        Cette synthèse prépare l&#8217;échange. Elle ne remplace pas l&#8217;avis médical.
+      </p>
+
+      <div className="btn-row" style={{ marginTop: 10 }}>
+        <button className="btn btn-ghost">
+          <Icon name="download" size={17} stroke={1.8} color="#35462D" />
+          Télécharger le résumé
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- SCREEN : RESSOURCES ---------------- */
+function ScreenRessources() {
+  const groups = [
+    {
+      title: "Ateliers près de chez vous",
+      rows: [
+        { ic: "leaf", rt: "Comprendre mon traitement", rs: "Atelier · 1h30" },
+        { ic: "leaf", rt: "Alimentation et fatigue", rs: "Atelier · 2h" },
+        { ic: "leaf", rt: "Activité physique adaptée", rs: "Séance d’essai" },
+      ],
+    },
+    {
+      title: "Témoignages & échanges",
+      rows: [
+        { ic: "people", rt: "Récits d’autres patients", rs: "Vidéos et textes" },
+        { ic: "heart", rt: "Échanger avec un patient partenaire", rs: "Sur rendez-vous" },
+      ],
+    },
+    {
+      title: "Associations partenaires",
+      rows: [
+        { ic: "book", rt: "France Assos Santé", rs: "Information et droits" },
+        { ic: "book", rt: "Associations locales de patients", rs: "Près de chez vous" },
+      ],
+    },
+  ];
+
+  return (
+    <div className="screen">
+      <div className="appbar">
+        <span className="wordmark" style={{ fontSize: 16 }}>Pacte</span>
+        <span className="ghost" />
+      </div>
+      <div className="kicker">Ressources &amp; ETP</div>
+      <h1 className="title">S&#8217;informer,<br />échanger, apprendre</h1>
+
+      <div className="card etp-card reveal" style={{ marginTop: 20, animationDelay: ".05s" }}>
+        <div className="etp-k">Éducation thérapeutique</div>
+        <h3>Mieux vivre avec ma maladie</h3>
+        <p>
+          Des ateliers pour comprendre votre traitement et avancer à votre rythme,
+          animés près de chez vous.
+        </p>
+      </div>
+
+      {groups.map((g, gi) => (
+        <div key={gi} className="res-group">
+          <div className="res-gt">{g.title}</div>
+          {g.rows.map((r, ri) => (
+            <div
+              key={ri}
+              className="card res-row reveal"
+              style={{ animationDelay: `${0.1 + (gi * 3 + ri) * 0.05}s` }}
+            >
+              <div className="res-ic">
+                <Icon name={r.ic} size={20} stroke={1.6} color="#35462D" />
+              </div>
+              <div className="res-tx">
+                <div className="rt">{r.rt}</div>
+                <div className="rs">{r.rs}</div>
+              </div>
+              <Icon name="chevron" size={16} stroke={1.8} color="#C8C8C8" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ---------------- BOTTOM NAV ---------------- */
+function BottomNav({ screen, go }) {
+  const items = [
+    { key: "suivi", label: "Suivi", icon: "ring" },
+    { key: "indicateurs", label: "Indicateurs", icon: "bars" },
+    { key: "synthese", label: "Synthèse", icon: "doc" },
+    { key: "ressources", label: "Ressources", icon: "book" },
+  ];
+  const active = screen === "observation" ? null : screen;
+  return (
+    <nav className="nav">
+      {items.map((it) => (
+        <button
+          key={it.key}
+          className={"nav-item" + (active === it.key ? " on" : "")}
+          onClick={() => go(it.key)}
+        >
+          <span className="nav-ic">
+            <Icon name={it.icon} size={22} stroke={active === it.key ? 1.9 : 1.6} />
+            <span className="nav-pip" />
+          </span>
+          {it.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+/* ---------------- ROOT ---------------- */
+export default function PacteApp() {
+  const [screen, setScreen] = useState("suivi");
+  const [from, setFrom] = useState("suivi");
+  const [obsKey, setObsKey] = useState("fatigue");
+
+  const go = (s) => {
+    if (s !== "observation") setFrom(s);
+    setScreen(s);
+  };
+  const openObs = (key) => {
+    setObsKey(key);
+    setFrom(screen);
+    setScreen("observation");
+  };
+  const back = () => setScreen(from === "observation" ? "suivi" : from);
+
+  return (
+    <div className="pacte-root">
+      <style>{CSS}</style>
+      <div className="device">
+        {/* status bar */}
+        <div className="statusbar">
+          <span>9:41</span>
+          <span className="dots">
+            <span className="bar" style={{ height: 6 }} />
+            <span className="bar" style={{ height: 9 }} />
+            <span className="bar" style={{ height: 12 }} />
+            <svg width="22" height="11" viewBox="0 0 22 11" style={{ marginLeft: 3 }}>
+              <rect x="0.6" y="1.2" width="17" height="8.6" rx="2.3"
+                fill="none" stroke="#262626" strokeWidth="1" opacity=".5" />
+              <rect x="2.4" y="3" width="11.5" height="5" rx="1" fill="#262626" />
+              <rect x="18.4" y="3.7" width="1.8" height="3.6" rx="1" fill="#262626" opacity=".5" />
+            </svg>
+          </span>
+        </div>
+
+        {/* body */}
+        <div className="body">
+          {screen === "suivi" && <ScreenSuivi key="suivi" go={go} />}
+          {screen === "indicateurs" && (
+            <ScreenIndicateurs key="indicateurs" go={go} openObs={openObs} />
+          )}
+          {screen === "observation" && (
+            <ScreenObservation key="observation" back={back} startKey={obsKey} />
+          )}
+          {screen === "synthese" && <ScreenSynthese key="synthese" />}
+          {screen === "ressources" && <ScreenRessources key="ressources" />}
+        </div>
+
+        {/* bottom nav */}
+        <BottomNav screen={screen} go={go} />
+      </div>
+    </div>
+  );
+}
