@@ -8,7 +8,6 @@ import React, { useState, useEffect, useRef } from "react";
    ============================================================ */
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
 
 .pacte-root{
   --ivory:#F9F9F7; --paper:#FFFFFF;
