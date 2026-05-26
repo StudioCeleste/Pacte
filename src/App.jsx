@@ -57,7 +57,7 @@ const CSS = `
 /* ---------- app bar / wordmark ---------- */
 .appbar{
   display:flex; align-items:center; justify-content:space-between;
-  padding:0 2px 12px;
+  padding:12px 2px 12px;
 }
 .logo{
   height:36px; object-fit:contain;
@@ -70,10 +70,13 @@ const CSS = `
   width: 100%; font-family: var(--sans); font-size: 16px;
   color: var(--ink); background: var(--ivory);
   border: 1px solid var(--line-strong); border-radius: 12px;
-  padding: 12px 14px; box-sizing: border-box;
+  padding: 14px 16px; box-sizing: border-box;
+  -webkit-appearance: none; appearance: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
 }
 .date-input:focus, .text-input:focus {
   outline: none; border-color: var(--green);
+  box-shadow: 0 0 0 3px var(--green-soft);
 }
 
 /* ---------- headings ---------- */
@@ -684,29 +687,28 @@ function ScreenOnboarding({ onComplete }) {
   };
 
   return (
-    <div className="screen">
-      <div className="appbar" style={{ justifyContent: 'center' }}>
-        <img src={logoImg} alt="Pacte Logo" className="logo" style={{height: 48}} />
+    <div className="screen" style={{ paddingTop: 32, paddingBottom: 60 }}>
+      <div className="appbar" style={{ justifyContent: 'center', marginBottom: 12 }}>
+        <img src={logoImg} alt="Pacte Logo" className="logo" style={{height: 48, objectFit: 'contain'}} />
       </div>
-      <h1 className="title" style={{textAlign: 'center', marginTop: 32}}>Bienvenue</h1>
-      <p className="subtitle" style={{textAlign: 'center', margin: '8px auto 32px'}}>
+      <h1 className="title" style={{textAlign: 'center', fontSize: 34, marginBottom: 10}}>Bienvenue</h1>
+      <p className="subtitle" style={{textAlign: 'center', margin: '0 auto 40px', fontSize: 15, maxWidth: 300, lineHeight: 1.5}}>
         Configurons ensemble votre suivi pour préparer votre prochain échange médical.
       </p>
 
-      <div className="card" style={{padding: 20, marginBottom: 20}}>
-        <label className="field-label" style={{marginTop: 0}}>Prochain rendez-vous</label>
+      <div style={{ marginBottom: 36 }}>
+        <label className="field-label" style={{ marginTop: 0, color: 'var(--ink)' }}>Prochain rendez-vous</label>
         <input 
           type="date" 
           value={rdvDate} 
           onChange={e => setRdvDate(e.target.value)}
           className="date-input"
-          style={{marginTop: 8}}
         />
       </div>
 
-      <div className="card" style={{padding: 20, marginBottom: 20}}>
-        <label className="field-label" style={{marginTop: 0}}>Indicateurs à suivre</label>
-        <p className="section-intro" style={{marginTop: 4}}>
+      <div style={{ marginBottom: 36 }}>
+        <label className="field-label" style={{ marginTop: 0, color: 'var(--ink)' }}>Indicateurs à suivre</label>
+        <p className="section-intro" style={{marginTop: 0, marginBottom: 16, fontSize: 14}}>
           Sélectionnez ce que vous souhaitez observer.
         </p>
         <div className="chips">
@@ -720,23 +722,26 @@ function ScreenOnboarding({ onComplete }) {
             </button>
           ))}
         </div>
-        <form onSubmit={handleAddCustom} style={{display: 'flex', gap: 8, marginTop: 16}}>
+        <form onSubmit={handleAddCustom} style={{display: 'flex', gap: 10, marginTop: 18}}>
           <input 
             type="text" 
             placeholder="Autre indicateur..."
             value={customIndName}
             onChange={e => setCustomIndName(e.target.value)}
             className="text-input"
+            style={{ flex: 1, minWidth: 0 }}
           />
-          <button type="submit" className="btn btn-ghost" style={{width: 'auto', padding: '10px 14px'}}>
+          <button type="submit" className="btn btn-ghost" style={{flex: '0 0 auto', padding: '0 18px', width: 'auto'}}>
             Ajouter
           </button>
         </form>
       </div>
 
-      <button className="btn btn-primary" onClick={handleSubmit} style={{marginTop: 32}}>
-        Démarrer mon suivi
-      </button>
+      <div style={{ marginTop: 50 }}>
+        <button className="btn btn-primary" onClick={handleSubmit} style={{ padding: 18, fontSize: 16 }}>
+          Démarrer mon suivi
+        </button>
+      </div>
     </div>
   );
 }
