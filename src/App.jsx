@@ -18,7 +18,7 @@ const CSS = `
   --line:#E8E7E1; --line-strong:#D6D5CC;
   --serif:'Newsreader',Georgia,'Times New Roman',serif;
   --sans:'Hanken Grotesk',-apple-system,system-ui,sans-serif;
-  min-height:100vh; min-height:100dvh;
+  height:100vh; height:100dvh; overflow:hidden;
   width:100%; display:flex; flex-direction:column;
   background:
     radial-gradient(120% 80% at 50% 0%, #F1EFE8 0%, #E7E4DB 60%, #E2DFD4 100%);
@@ -40,8 +40,10 @@ const CSS = `
 
 /* ---------- scrollable body ---------- */
 .body{
-  flex:1 1 auto;
+  flex:1 1 auto; overflow-y:auto; overflow-x:hidden;
+  scrollbar-width:none;
 }
+.body::-webkit-scrollbar{ display:none; }
 
 .screen{
   padding:0 22px 40px;
@@ -421,8 +423,8 @@ const CSS = `
 
 /* ---------- bottom nav ---------- */
 .nav{
-  position:sticky; bottom:0; z-index:20;
   flex:0 0 auto;
+  position:relative; z-index:20;
   display:flex; align-items:stretch;
   padding:9px 12px calc(9px + env(safe-area-inset-bottom,8px));
   background:rgba(249,249,247,.92);
