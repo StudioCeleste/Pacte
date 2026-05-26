@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import logoImg from "./assets/LogoPacte.jpg";
 
 /* ============================================================
    PACTE — Prototype d'interface de suivi de santé
@@ -18,8 +19,6 @@ const CSS = `
   --serif:'Newsreader',Georgia,'Times New Roman',serif;
   --sans:'Hanken Grotesk',-apple-system,system-ui,sans-serif;
   min-height:100vh; width:100%;
-  display:flex; align-items:center; justify-content:center;
-  padding:32px 16px;
   background:
     radial-gradient(120% 80% at 50% 0%, #F1EFE8 0%, #E7E4DB 60%, #E2DFD4 100%);
   font-family:var(--sans);
@@ -28,33 +27,16 @@ const CSS = `
 }
 .pacte-root *{ box-sizing:border-box; }
 
-/* ---------- device shell ---------- */
-.device{
-  position:relative;
-  width:392px; max-width:100%;
-  height:min(844px,94vh);
-  background:var(--ivory);
-  border-radius:46px;
-  overflow:hidden;
+.app-container{
   display:flex; flex-direction:column;
-  box-shadow:
-    0 2px 4px rgba(38,38,38,.04),
-    0 30px 60px -22px rgba(38,38,38,.34),
-    0 0 0 1px rgba(38,38,38,.05),
-    inset 0 0 0 6px #F4F2EC;
-  -webkit-tap-highlight-color:transparent;
+  height:100vh; height:100dvh;
+  width:100%; max-width:600px;
+  margin:0 auto;
+  background:var(--ivory);
+  box-shadow:0 0 40px rgba(0,0,0,.06);
+  position:relative;
+  overflow:hidden;
 }
-
-/* ---------- status bar ---------- */
-.statusbar{
-  flex:0 0 auto;
-  display:flex; align-items:center; justify-content:space-between;
-  padding:14px 30px 6px;
-  font-size:13px; font-weight:600; color:var(--ink);
-  letter-spacing:.2px;
-}
-.statusbar .dots{ display:flex; gap:5px; align-items:center; }
-.statusbar .bar{ width:3px; border-radius:2px; background:var(--ink); }
 
 /* ---------- scrollable body ---------- */
 .body{
@@ -64,7 +46,7 @@ const CSS = `
 .body::-webkit-scrollbar{ display:none; }
 
 .screen{
-  padding:6px 22px 30px;
+  padding:24px 22px 40px;
   animation:screenIn .42s cubic-bezier(.22,.61,.36,1) both;
 }
 @keyframes screenIn{
@@ -75,17 +57,24 @@ const CSS = `
 /* ---------- app bar / wordmark ---------- */
 .appbar{
   display:flex; align-items:center; justify-content:space-between;
-  padding:8px 2px 4px;
+  padding:0 2px 12px;
 }
-.wordmark{
-  position:relative; font-family:var(--serif);
-  font-size:21px; font-weight:500; color:var(--green);
-  letter-spacing:.3px; padding-top:7px;
-}
-.wordmark .loop{
-  position:absolute; top:-3px; left:-5px;
+.logo{
+  height:36px; object-fit:contain;
+  mix-blend-mode:multiply; border-radius:4px;
 }
 .appbar .ghost{ width:36px; height:36px; }
+
+/* ---------- inputs ---------- */
+.date-input, .text-input {
+  width: 100%; font-family: var(--sans); font-size: 16px;
+  color: var(--ink); background: var(--ivory);
+  border: 1px solid var(--line-strong); border-radius: 12px;
+  padding: 12px 14px; box-sizing: border-box;
+}
+.date-input:focus, .text-input:focus {
+  outline: none; border-color: var(--green);
+}
 
 /* ---------- headings ---------- */
 .kicker{
@@ -642,15 +631,117 @@ function Spark({ data }) {
   );
 }
 
-/* ---------------- DATA ---------------- */
-const INDICATORS = [
-  { key: "fatigue", name: "Fatigue", last: 6, trend: "Tendance en baisse", spark: [7, 7, 6, 6, 5, 6] },
-  { key: "douleur", name: "Douleur", last: 3, trend: "Plutôt stable", spark: [4, 4, 3, 3, 3, 3] },
-  { key: "sommeil", name: "Sommeil", last: 5, trend: "Variable", spark: [6, 4, 7, 5, 6, 5] },
-  { key: "humeur", name: "Humeur", last: 6, trend: "Plutôt stable", spark: [5, 6, 6, 5, 7, 6] },
-  { key: "effets", name: "Effets secondaires", last: 2, trend: "Tendance en baisse", spark: [4, 3, 3, 2, 2, 2] },
-];
+/* ---------------- ONBOARDING ---------------- */
+function ScreenOnboarding({ onComplete }) {
+  const [rdvDate, setRdvDate] = useState("");
+  const [selectedInds, setSelectedInds] = useState(new Set(["fatigue", "douleur"]));
+  const [customIndName, setCustomIndName] = useState("");
+  const [customInds, setCustomInds] = useState([]);
 
+  const defaultInds = [
+    { key: "fatigue", name: "Fatigue" },
+    { key: "douleur", name: "Douleur" },
+    { key: "sommeil", name: "Sommeil" },
+    { key: "humeur", name: "Humeur" },
+    { key: "mobilite", name: "Mobilité" },
+    { key: "effets", name: "Effets secondaires" }
+  ];
+
+  const allInds = [...defaultInds, ...customInds];
+
+  const toggleInd = (key) => {
+    const next = new Set(selectedInds);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setSelectedInds(next);
+  };
+
+  const handleAddCustom = (e) => {
+    e.preventDefault();
+    if (!customIndName.trim()) return;
+    const key = "custom_" + Date.now();
+    setCustomInds([...customInds, { key, name: customIndName.trim() }]);
+    setCustomIndName("");
+    const next = new Set(selectedInds);
+    next.add(key);
+    setSelectedInds(next);
+  };
+
+  const handleSubmit = () => {
+    if (!rdvDate) return alert("Veuillez indiquer la date de votre prochain rendez-vous.");
+    if (selectedInds.size === 0) return alert("Veuillez sélectionner au moins un indicateur.");
+    const chosen = allInds.filter(i => selectedInds.has(i.key));
+    onComplete({
+      rdvDate,
+      startDate: new Date().toISOString(),
+      indicators: chosen.map(c => ({
+        ...c,
+        last: 0,
+        trend: "Nouveau",
+        spark: [0, 0, 0, 0, 0, 0]
+      }))
+    });
+  };
+
+  return (
+    <div className="screen">
+      <div className="appbar" style={{ justifyContent: 'center' }}>
+        <img src={logoImg} alt="Pacte Logo" className="logo" style={{height: 48}} />
+      </div>
+      <h1 className="title" style={{textAlign: 'center', marginTop: 32}}>Bienvenue</h1>
+      <p className="subtitle" style={{textAlign: 'center', margin: '8px auto 32px'}}>
+        Configurons ensemble votre suivi pour préparer votre prochain échange médical.
+      </p>
+
+      <div className="card" style={{padding: 20, marginBottom: 20}}>
+        <label className="field-label" style={{marginTop: 0}}>Prochain rendez-vous</label>
+        <input 
+          type="date" 
+          value={rdvDate} 
+          onChange={e => setRdvDate(e.target.value)}
+          className="date-input"
+          style={{marginTop: 8}}
+        />
+      </div>
+
+      <div className="card" style={{padding: 20, marginBottom: 20}}>
+        <label className="field-label" style={{marginTop: 0}}>Indicateurs à suivre</label>
+        <p className="section-intro" style={{marginTop: 4}}>
+          Sélectionnez ce que vous souhaitez observer.
+        </p>
+        <div className="chips">
+          {allInds.map(ind => (
+            <button 
+              key={ind.key}
+              className={"chip" + (selectedInds.has(ind.key) ? " on" : "")}
+              onClick={() => toggleInd(ind.key)}
+            >
+              {ind.name}
+            </button>
+          ))}
+        </div>
+        <form onSubmit={handleAddCustom} style={{display: 'flex', gap: 8, marginTop: 16}}>
+          <input 
+            type="text" 
+            placeholder="Autre indicateur..."
+            value={customIndName}
+            onChange={e => setCustomIndName(e.target.value)}
+            className="text-input"
+          />
+          <button type="submit" className="btn btn-ghost" style={{width: 'auto', padding: '10px 14px'}}>
+            Ajouter
+          </button>
+        </form>
+      </div>
+
+      <button className="btn btn-primary" onClick={handleSubmit} style={{marginTop: 32}}>
+        Démarrer mon suivi
+      </button>
+    </div>
+  );
+}
+
+/* ---------------- DATA ---------------- */
 const VALUE_WORD = (v) => {
   if (v === 0) return "Aucune";
   if (v <= 3) return "Légère";
@@ -660,20 +751,32 @@ const VALUE_WORD = (v) => {
 };
 
 /* ---------------- SCREEN : SUIVI ---------------- */
-function ScreenSuivi({ go }) {
+function ScreenSuivi({ go, appState }) {
+  const { rdvDate, startDate } = appState;
+  
+  const today = new Date();
+  const rdv = new Date(rdvDate);
+  const start = new Date(startDate);
+  
+  today.setHours(0, 0, 0, 0);
+  rdv.setHours(0, 0, 0, 0);
+  start.setHours(0, 0, 0, 0);
+
+  const totalCycleMs = rdv.getTime() - start.getTime();
+  const totalCycleDays = Math.max(1, Math.ceil(totalCycleMs / (1000 * 60 * 60 * 24)));
+  
+  const remainingMs = rdv.getTime() - today.getTime();
+  const remainingDays = Math.max(0, Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
+  
+  const elapsedDays = totalCycleDays - remainingDays;
+  const progress = Math.min(1, Math.max(0, elapsedDays / totalCycleDays));
+
+  const rdvStr = rdv.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
   return (
     <div className="screen">
       <div className="appbar">
-        <span className="wordmark">
-          <svg className="loop" width="40" height="20" viewBox="0 0 40 20">
-            <path
-              d="M9 15C2 13 2 5 14 4c14-1 24 3 23 8-1 5-13 6-20 4"
-              fill="none" stroke="#35462D" strokeWidth="1.6"
-              strokeLinecap="round" opacity=".55"
-            />
-          </svg>
-          Pacte
-        </span>
+        <img src={logoImg} alt="Pacte Logo" className="logo" />
         <span className="ghost" />
       </div>
 
@@ -689,19 +792,19 @@ function ScreenSuivi({ go }) {
               <Icon name="calendar" size={14} stroke={1.8} color="#8E918A" />
               Prochain rendez-vous
             </div>
-            <div className="rdv-date">12 juin 2025</div>
+            <div className="rdv-date">{rdvStr}</div>
           </div>
-          <div className="pill">J&#8209;32</div>
+          <div className="pill">J&#8209;{remainingDays}</div>
         </div>
         <div className="rdv-div" />
         <div className="rdv-cycle">
           <span className="dot-green" />
-          Suivi en cours · réévaluation prévue dans 32 jours
+          Suivi en cours · réévaluation prévue dans {remainingDays} jours
         </div>
       </div>
 
       <div className="ring-wrap reveal" style={{ animationDelay: ".12s" }}>
-        <ProgressRing progress={0.66} days={32} />
+        <ProgressRing progress={progress} days={remainingDays} />
         <p className="ring-note">
           Chaque observation vous aide à préparer le prochain échange avec votre médecin.
         </p>
@@ -726,11 +829,11 @@ function ScreenSuivi({ go }) {
 }
 
 /* ---------------- SCREEN : INDICATEURS ---------------- */
-function ScreenIndicateurs({ go, openObs }) {
+function ScreenIndicateurs({ go, openObs, indicators }) {
   return (
     <div className="screen">
       <div className="appbar">
-        <span className="wordmark" style={{ fontSize: 16 }}>Pacte</span>
+        <img src={logoImg} alt="Pacte Logo" className="logo" style={{height: 24}} />
         <span className="ghost" />
       </div>
       <div className="kicker">Mes indicateurs</div>
@@ -739,7 +842,7 @@ function ScreenIndicateurs({ go, openObs }) {
         Les indicateurs définis avec votre médecin lors de la consultation de délibération.
       </p>
 
-      {INDICATORS.map((ind, i) => (
+      {indicators.map((ind, i) => (
         <div
           key={ind.key}
           className="card ind-card reveal"
@@ -767,12 +870,13 @@ function ScreenIndicateurs({ go, openObs }) {
 }
 
 /* ---------------- SCREEN : OBSERVATION ---------------- */
-function ScreenObservation({ back, startKey }) {
-  const [indKey, setIndKey] = useState(startKey || "fatigue");
+function ScreenObservation({ back, startKey, indicators }) {
+  const [indKey, setIndKey] = useState(startKey || (indicators[0]?.key));
   const [value, setValue] = useState(5);
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
-  const current = INDICATORS.find((x) => x.key === indKey);
+  
+  const current = indicators.find((x) => x.key === indKey) || indicators[0];
   const pct = (value / 10) * 100;
 
   const reset = (nextKey) => {
@@ -782,9 +886,11 @@ function ScreenObservation({ back, startKey }) {
     setSaved(false);
   };
   const nextIndicator = () => {
-    const idx = INDICATORS.findIndex((x) => x.key === indKey);
-    reset(INDICATORS[(idx + 1) % INDICATORS.length].key);
+    const idx = indicators.findIndex((x) => x.key === indKey);
+    reset(indicators[(idx + 1) % indicators.length].key);
   };
+
+  if (!current) return null;
 
   return (
     <div className="screen">
@@ -800,7 +906,7 @@ function ScreenObservation({ back, startKey }) {
       <div className="obs-date">Aujourd&#8217;hui · 11 mai 2025</div>
 
       <div className="chips">
-        {INDICATORS.map((ind) => (
+        {indicators.map((ind) => (
           <button
             key={ind.key}
             className={"chip" + (ind.key === indKey ? " on" : "")}
@@ -923,7 +1029,7 @@ function ScreenSynthese() {
   return (
     <div className="screen">
       <div className="appbar">
-        <span className="wordmark" style={{ fontSize: 16 }}>Pacte</span>
+        <img src={logoImg} alt="Pacte Logo" className="logo" style={{height: 24}} />
         <span className="ghost" />
       </div>
       <div className="kicker">Synthèse</div>
@@ -1017,7 +1123,7 @@ function ScreenRessources() {
   return (
     <div className="screen">
       <div className="appbar">
-        <span className="wordmark" style={{ fontSize: 16 }}>Pacte</span>
+        <img src={logoImg} alt="Pacte Logo" className="logo" style={{height: 24}} />
         <span className="ghost" />
       </div>
       <div className="kicker">Ressources &amp; ETP</div>
@@ -1087,6 +1193,12 @@ function BottomNav({ screen, go }) {
 
 /* ---------------- ROOT ---------------- */
 export default function PacteApp() {
+  const [appState, setAppState] = useState({
+    hasOnboarded: false,
+    rdvDate: "",
+    startDate: "",
+    indicators: []
+  });
   const [screen, setScreen] = useState("suivi");
   const [from, setFrom] = useState("suivi");
   const [obsKey, setObsKey] = useState("fatigue");
@@ -1102,40 +1214,44 @@ export default function PacteApp() {
   };
   const back = () => setScreen(from === "observation" ? "suivi" : from);
 
+  const handleOnboarding = (data) => {
+    setAppState({
+      hasOnboarded: true,
+      ...data
+    });
+    if (data.indicators.length > 0) {
+      setObsKey(data.indicators[0].key);
+    }
+  };
+
+  if (!appState.hasOnboarded) {
+    return (
+      <div className="pacte-root">
+        <style>{CSS}</style>
+        <div className="app-container">
+          <div className="body">
+            <ScreenOnboarding onComplete={handleOnboarding} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pacte-root">
       <style>{CSS}</style>
-      <div className="device">
-        {/* status bar */}
-        <div className="statusbar">
-          <span>9:41</span>
-          <span className="dots">
-            <span className="bar" style={{ height: 6 }} />
-            <span className="bar" style={{ height: 9 }} />
-            <span className="bar" style={{ height: 12 }} />
-            <svg width="22" height="11" viewBox="0 0 22 11" style={{ marginLeft: 3 }}>
-              <rect x="0.6" y="1.2" width="17" height="8.6" rx="2.3"
-                fill="none" stroke="#262626" strokeWidth="1" opacity=".5" />
-              <rect x="2.4" y="3" width="11.5" height="5" rx="1" fill="#262626" />
-              <rect x="18.4" y="3.7" width="1.8" height="3.6" rx="1" fill="#262626" opacity=".5" />
-            </svg>
-          </span>
-        </div>
-
-        {/* body */}
+      <div className="app-container">
         <div className="body">
-          {screen === "suivi" && <ScreenSuivi key="suivi" go={go} />}
+          {screen === "suivi" && <ScreenSuivi key="suivi" go={go} appState={appState} />}
           {screen === "indicateurs" && (
-            <ScreenIndicateurs key="indicateurs" go={go} openObs={openObs} />
+            <ScreenIndicateurs key="indicateurs" go={go} openObs={openObs} indicators={appState.indicators} />
           )}
           {screen === "observation" && (
-            <ScreenObservation key="observation" back={back} startKey={obsKey} />
+            <ScreenObservation key="observation" back={back} startKey={obsKey} indicators={appState.indicators} />
           )}
           {screen === "synthese" && <ScreenSynthese key="synthese" />}
           {screen === "ressources" && <ScreenRessources key="ressources" />}
         </div>
-
-        {/* bottom nav */}
         <BottomNav screen={screen} go={go} />
       </div>
     </div>
