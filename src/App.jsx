@@ -40,13 +40,11 @@ const CSS = `
 
 /* ---------- scrollable body ---------- */
 .body{
-  flex:1 1 auto; overflow-y:auto; overflow-x:hidden;
-  scrollbar-width:none;
+  flex:1 1 auto;
 }
-.body::-webkit-scrollbar{ display:none; }
 
 .screen{
-  padding:24px 22px 40px;
+  padding:0 22px 40px;
   animation:screenIn .42s cubic-bezier(.22,.61,.36,1) both;
 }
 @keyframes screenIn{
@@ -56,8 +54,11 @@ const CSS = `
 
 /* ---------- app bar / wordmark ---------- */
 .appbar{
+  position:sticky; top:0; z-index:20;
+  background:rgba(249,249,247,.92); backdrop-filter:blur(12px);
   display:flex; align-items:center; justify-content:space-between;
-  padding:12px 2px 12px;
+  margin:0 -22px 16px;
+  padding:calc(16px + env(safe-area-inset-top, 0px)) 22px 12px;
 }
 .logo{
   height:36px; object-fit:contain;
@@ -420,6 +421,7 @@ const CSS = `
 
 /* ---------- bottom nav ---------- */
 .nav{
+  position:sticky; bottom:0; z-index:20;
   flex:0 0 auto;
   display:flex; align-items:stretch;
   padding:9px 12px calc(9px + env(safe-area-inset-bottom,8px));
@@ -577,8 +579,9 @@ function ProgressRing({ progress = 0.66, days = 32 }) {
     return () => { clearTimeout(t); cancelAnimationFrame(raf); };
   }, [days]);
 
-  const offset = filled ? C * (1 - progress) : C;
-  const dotAngle = filled ? progress * 360 : 0;
+  const visualProgress = Math.max(0.015, progress);
+  const offset = filled ? C * (1 - visualProgress) : C;
+  const dotAngle = filled ? visualProgress * 360 : 0;
 
   return (
     <div
@@ -687,8 +690,8 @@ function ScreenOnboarding({ onComplete }) {
   };
 
   return (
-    <div className="screen" style={{ paddingTop: 32, paddingBottom: 60 }}>
-      <div className="appbar" style={{ justifyContent: 'center', marginBottom: 12 }}>
+    <div className="screen" style={{ paddingBottom: 60 }}>
+      <div className="appbar" style={{ justifyContent: 'center', marginBottom: 24 }}>
         <img src={logoImg} alt="Pacte Logo" className="logo" style={{height: 48, objectFit: 'contain'}} />
       </div>
       <h1 className="title" style={{textAlign: 'center', fontSize: 34, marginBottom: 10}}>Bienvenue</h1>
